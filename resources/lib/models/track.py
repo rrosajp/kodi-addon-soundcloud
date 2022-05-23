@@ -15,10 +15,16 @@ class Track(ListItem):
     info = {}
 
     def to_list_item(self, addon_base):
-        list_item_label = "[%s] " % blocked + self.label if self.blocked else self.label
-        list_item_label = "[%s] " % preview + self.label if self.preview else list_item_label
+        list_item_label = f"[{blocked}] " + self.label if self.blocked else self.label
+        list_item_label = (
+            f"[{preview}] " + self.label if self.preview else list_item_label
+        )
+
         list_item = xbmcgui.ListItem(label=list_item_label)
-        url = addon_base + "/play/?" + urllib.parse.urlencode({"media_url": self.media})
+        url = f"{addon_base}/play/?" + urllib.parse.urlencode(
+            {"media_url": self.media}
+        )
+
         list_item.setArt({"thumb": self.thumb})
         list_item.setInfo("music", {
             "artist": self.info.get("artist"),

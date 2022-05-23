@@ -53,11 +53,7 @@ class VFS:
         return stat.st_mtime()
 
     def get_json_as_obj(self, filename, default=None):
-        string = self.read(filename)
-        if string:
-            return json.loads(string)
-        else:
-            return default if default else {}
+        return json.loads(string) if (string := self.read(filename)) else default or {}
 
     def save_obj_to_json(self, filename, obj):
         string = json.dumps(obj)
