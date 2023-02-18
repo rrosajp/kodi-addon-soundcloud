@@ -16,23 +16,19 @@ class ApiV2TestCase(TestCase):
 
     @staticmethod
     def _side_effect_do_request(*args):
-        if args[0] == "/tracks":
-            if args[1].get("ids") == "53787294":
-                with open("./tests/mocks/api_v2_playlist_tracks.json") as f:
-                    mock_data = f.read()
-            else:
-                with open("./tests/mocks/api_v2_discover_tracks.json") as f:
-                    mock_data = f.read()
-            return json.loads(mock_data)
-        else:
+        if args[0] != "/tracks":
             return DEFAULT
+        if args[1].get("ids") == "53787294":
+            with open("./tests/mocks/api_v2_playlist_tracks.json") as f:
+                mock_data = f.read()
+        else:
+            with open("./tests/mocks/api_v2_discover_tracks.json") as f:
+                mock_data = f.read()
+        return json.loads(mock_data)
 
     @staticmethod
     def _side_effect_settings_get(*args):
-        if args[0] == "audio.format":
-            return "2"  # Default in settings (mp3 progressive)
-        else:
-            return DEFAULT
+        return "2" if args[0] == "audio.format" else DEFAULT
 
     @staticmethod
     def _side_effect_request_get(*args, **keywargs):

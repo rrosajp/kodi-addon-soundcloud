@@ -14,9 +14,9 @@ class Playlist(ListItem):
         list_item.setInfo("music", {
             "title": self.label
         })
-        url = addon_base + "/?" + urllib.parse.urlencode({
-            "action": "call",
-            "call": "/playlists/{id}".format(id=self.id)
-        })
+        url = f"{addon_base}/?" + urllib.parse.urlencode(
+            {"action": "call", "call": "/playlists/{id}".format(id=self.id)}
+        )
+
 
         return url, list_item, True

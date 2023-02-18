@@ -38,18 +38,13 @@ class ApiV2(ApiInterface):
 
     @property
     def api_client_id(self):
-        # It is possible to set a custom client ID in the settings
-        client_id_settings = self.settings.get("apiv2.client_id")
-        if client_id_settings:
+        if client_id_settings := self.settings.get("apiv2.client_id"):
             xbmc.log("plugin.audio.soundcloud::ApiV2() Using custom client ID", xbmc.LOGDEBUG)
             return client_id_settings
 
-        # Check if there is a cached client ID
-        client_id_cached = self.cache.get(
-            self.api_client_id_cache_key,
-            self.api_client_id_cache_duration
-        )
-        if client_id_cached:
+        if client_id_cached := self.cache.get(
+            self.api_client_id_cache_key, self.api_client_id_cache_duration
+        ):
             xbmc.log("plugin.audio.soundcloud::ApiV2() Using cached client ID", xbmc.LOGDEBUG)
             return client_id_cached
 
@@ -61,7 +56,10 @@ class ApiV2(ApiInterface):
         return client_id
 
     def search(self, query, kind="tracks"):
-        res = self._do_request("/search/" + kind, {"q": query, "limit": self.api_limit})
+        res = self._do_request(
+            f"/search/{kind}", {"q": query, "limit": self.api_limit}
+        )
+
         return self._map_json_to_collection(res)
 
     def discover(self, selection_id=None):
@@ -104,15 +102,14 @@ class ApiV2(ApiInterface):
         cache_key = hashlib.sha1((path + str(payload)).encode()).hexdigest()
 
         xbmc.log(
-            "plugin.audio.soundcloud::ApiV2() Calling %s with header %s and payload %s" %
-            (path, str(headers), str(payload)),
-            xbmc.LOGDEBUG
+            f"plugin.audio.soundcloud::ApiV2() Calling {path} with header {headers} and payload {str(payload)}",
+            xbmc.LOGDEBUG,
         )
+
 
         # If caching is active, check for an existing cached file.
         if cache:
-            cached_response = self.cache.get(cache_key, cache)
-            if cached_response:
+            if cached_response := self.cache.get(cache_key, cache):
                 xbmc.log("plugin.audio.soundcloud::ApiV2() Cache hit", xbmc.LOGDEBUG)
                 return json.loads(cached_response)
 
@@ -142,8 +139,9 @@ class ApiV2(ApiInterface):
                 elif "tracks" in category:
                     return {"collection": category["tracks"]}
             elif "items" in category:
-                res = self._find_id_in_selection(category["items"]["collection"], selection_id)
-                if res:
+                if res := self._find_id_in_selection(
+                    category["items"]["collection"], selection_id
+                ):
                     return res
 
     def _map_json_to_collection(self, json_obj):
@@ -242,8 +240,8 @@ class ApiV2(ApiInterface):
             artist = item["user"]["username"]
 
         track = Track(id=item["id"], label=item["title"])
-        track.blocked = True if item.get("policy") == "BLOCK" else False
-        track.preview = True if item.get("policy") == "SNIP" else False
+        track.blocked = item.get("policy") == "BLOCK"
+        track.preview = item.get("policy") == "SNIP"
         track.thumb = self._get_thumbnail(item, self.thumbnail_size)
         track.media = self._extract_media_url(item["media"]["transcodings"])
         track.info = {
@@ -263,24 +261,23 @@ class ApiV2(ApiInterface):
         # Get the HTML (includes a reference to the JS file we need)
         html = requests.get("https://soundcloud.com/", headers=headers).text
 
-        # Extract the HREF to the JS file (which contains the API key)
-        matches = re.findall(r"=\"(https://a-v2\.sndcdn\.com/assets/.*.js)\"", html)
-
-        if matches:
-            for match in matches:
-                # Get the JS
-                response = requests.get(match, headers=headers)
-                response.encoding = "utf-8"  # This speeds up `response.text` by 3 seconds
-
-                # Extract the API key
-                key = re.search(r"exports={\"api-v2\".*client_id:\"(\w*)\"", response.text)
-
-                if key:
-                    return str(key.group(1))
-
-            raise Exception("Failed to extract client key from js")
-        else:
+        if not (
+            matches := re.findall(
+                r"=\"(https://a-v2\.sndcdn\.com/assets/.*.js)\"", html
+            )
+        ):
             raise Exception("Failed to extract js href from html")
+        for match in matches:
+            # Get the JS
+            response = requests.get(match, headers=headers)
+            response.encoding = "utf-8"  # This speeds up `response.text` by 3 seconds
+
+            if key := re.search(
+                r"exports={\"api-v2\".*client_id:\"(\w*)\"", response.text
+            ):
+                return str(key[1])
+
+        raise Exception("Failed to extract client key from js")
 
     @staticmethod
     def _is_preferred_codec(codec, setting):

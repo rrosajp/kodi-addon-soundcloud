@@ -16,7 +16,7 @@ import xbmcvfs
 
 addon = xbmcaddon.Addon()
 addon_id = addon.getAddonInfo("id")
-addon_base = "plugin://" + addon_id
+addon_base = f"plugin://{addon_id}"
 addon_profile_path = xbmcvfs.translatePath(addon.getAddonInfo("profile"))
 vfs = VFS(addon_profile_path)
 vfs_cache = VFS(os.path.join(addon_profile_path, "cache"))
@@ -47,7 +47,7 @@ def run():
         elif "settings" in action:
             addon.openSettings()
         else:
-            xbmc.log(addon_id + ": Invalid root action", xbmc.LOGERROR)
+            xbmc.log(f"{addon_id}: Invalid root action", xbmc.LOGERROR)
 
     elif path == PATH_CHARTS:
         action = args.get("action", [None])[0]
@@ -55,13 +55,11 @@ def run():
         if action is None:
             items = listItems.charts()
             xbmcplugin.addDirectoryItems(handle, items, len(items))
-            xbmcplugin.endOfDirectory(handle)
         else:
             api_result = api.charts({"kind": action, "genre": genre, "limit": 50})
             collection = listItems.from_collection(api_result)
             xbmcplugin.addDirectoryItems(handle, collection, len(collection))
-            xbmcplugin.endOfDirectory(handle)
-
+        xbmcplugin.endOfDirectory(handle)
     elif path == PATH_DISCOVER:
         selection = args.get("selection", [None])[0]
         collection = listItems.from_collection(api.discover(selection))
@@ -76,12 +74,9 @@ def run():
 
         # Public legacy params (@deprecated)
         audio_id_legacy = args.get("audio_id", [None])[0]
-        track_id = audio_id_legacy if audio_id_legacy else track_id
+        track_id = audio_id_legacy or track_id
 
-        # Private params
-        media_url = args.get("media_url", [None])[0]
-
-        if media_url:
+        if media_url := args.get("media_url", [None])[0]:
             resolved_url = api.resolve_media_url(media_url)
             item = xbmcgui.ListItem(path=resolved_url)
             xbmcplugin.setResolvedUrl(handle, succeeded=True, listitem=item)
@@ -104,54 +99,46 @@ def run():
                 resolve_list_item(handle, item[1])
                 playlist.add(url=item[0], listitem=item[1])
         else:
-            xbmc.log(addon_id + ": Invalid play param", xbmc.LOGERROR)
+            xbmc.log(f"{addon_id}: Invalid play param", xbmc.LOGERROR)
 
     elif path == PATH_SEARCH:
         action = args.get("action", None)
         query = args.get("query", [""])[0]
 
-        if action and "remove" in action:
-            search_history.remove(query)
-            xbmc.executebuiltin("Container.Refresh")
-        elif action and "clear" in action:
-            search_history.clear()
-            xbmc.executebuiltin("Container.Refresh")
+        if action:
+            if "remove" in action:
+                search_history.remove(query)
+                xbmc.executebuiltin("Container.Refresh")
+            elif "clear" in action:
+                search_history.clear()
+                xbmc.executebuiltin("Container.Refresh")
 
-        if query:
-            if action is None:
+        if action is None:
+            if query:
                 search(handle, query)
-            elif "people" in action:
-                xbmcplugin.setContent(handle, "artists")
-                collection = listItems.from_collection(api.search(query, "users"))
-                xbmcplugin.addDirectoryItems(handle, collection, len(collection))
-                xbmcplugin.endOfDirectory(handle)
-            elif "albums" in action:
-                xbmcplugin.setContent(handle, "albums")
-                collection = listItems.from_collection(api.search(query, "albums"))
-                xbmcplugin.addDirectoryItems(handle, collection, len(collection))
-                xbmcplugin.endOfDirectory(handle)
-            elif "playlists" in action:
-                xbmcplugin.setContent(handle, "albums")
-                collection = listItems.from_collection(
-                    api.search(query, "playlists_without_albums")
-                )
-                xbmcplugin.addDirectoryItems(handle, collection, len(collection))
-                xbmcplugin.endOfDirectory(handle)
             else:
-                xbmc.log(addon_id + ": Invalid search action", xbmc.LOGERROR)
-        else:
-            if action is None:
                 items = listItems.search()
                 xbmcplugin.addDirectoryItems(handle, items, len(items))
                 xbmcplugin.endOfDirectory(handle)
-            elif "new" in action:
-                query = xbmcgui.Dialog().input(addon.getLocalizedString(30101))
-                search_history.add(query)
-                search(handle, query)
-            else:
-                xbmc.log(addon_id + ": Invalid search action", xbmc.LOGERROR)
-
-    # Legacy search query used by Chorus2 (@deprecated)
+        elif "people" in action:
+            xbmcplugin.setContent(handle, "artists")
+            collection = listItems.from_collection(api.search(query, "users"))
+            xbmcplugin.addDirectoryItems(handle, collection, len(collection))
+            xbmcplugin.endOfDirectory(handle)
+        elif "albums" in action:
+            xbmcplugin.setContent(handle, "albums")
+            collection = listItems.from_collection(api.search(query, "albums"))
+            xbmcplugin.addDirectoryItems(handle, collection, len(collection))
+            xbmcplugin.endOfDirectory(handle)
+        elif "playlists" in action:
+            xbmcplugin.setContent(handle, "albums")
+            collection = listItems.from_collection(
+                api.search(query, "playlists_without_albums")
+            )
+            xbmcplugin.addDirectoryItems(handle, collection, len(collection))
+            xbmcplugin.endOfDirectory(handle)
+        else:
+            xbmc.log(f"{addon_id}: Invalid search action", xbmc.LOGERROR)
     elif path == PATH_SEARCH_LEGACY:
         query = args.get("q", [""])[0]
         collection = listItems.from_collection(api.search(query))
@@ -168,7 +155,7 @@ def run():
             xbmcplugin.addDirectoryItems(handle, collection, len(collection))
             xbmcplugin.endOfDirectory(handle)
         else:
-            xbmc.log(addon_id + ": Invalid user action", xbmc.LOGERROR)
+            xbmc.log(f"{addon_id}: Invalid user action", xbmc.LOGERROR)
 
     elif path == PATH_SETTINGS_CACHE_CLEAR:
         vfs_cache.destroy()
@@ -176,7 +163,7 @@ def run():
         dialog.ok("SoundCloud", addon.getLocalizedString(30501))
 
     else:
-        xbmc.log(addon_id + ": Path not found", xbmc.LOGERROR)
+        xbmc.log(f"{addon_id}: Path not found", xbmc.LOGERROR)
 
 
 def resolve_list_item(handle, list_item):
